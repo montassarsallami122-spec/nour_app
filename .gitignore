@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Secrets / environment (never commit — repo is public)
+.env
+.env*.local
+**/.env
+**/.env*.local
+
+# Database (contient des données personnelles RH — ne jamais publier)
+backend/data/*.db
+backend/data/*.db-*
+
+# Build output
+dist/
+.next/
+out/
+next-env.d.ts
+
+# Logs
+*.log
+
+# Local run / screenshot artifacts
+.playwright-mcp/
+*.png
