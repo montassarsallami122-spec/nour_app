@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { KpiCard, BarChart, Donut, type Slice } from '../components/charts';
+import { AppNav } from '../components/AppNav';
+import { ChatWidget } from '../components/ChatWidget';
 
 interface Stats {
   kpis: {
@@ -26,6 +28,22 @@ interface Stats {
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 
+// Carte de graphique : révélation au scroll + léger soulèvement au survol.
+function Card({ className = '', i = 0, children }: { className?: string; i?: number; children: React.ReactNode }) {
+  return (
+    <motion.div
+      className={`card ${className}`}
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.45, ease: 'easeOut', delay: i * 0.06 }}
+      whileHover={{ y: -4 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
@@ -43,16 +61,18 @@ export default function Dashboard() {
 
   return (
     <div className="dash">
-      <header className="dash-header">
+      <motion.header
+        className="dash-header"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
         <div>
           <h1>Tableau de bord RH</h1>
           <p>Vue d&apos;ensemble des employés &amp; absences</p>
         </div>
-        <nav className="nav">
-          <Link href="/" className="nav-link">💬 Chatbot</Link>
-          <span className="nav-link active">📊 Dashboard</span>
-        </nav>
-      </header>
+        <AppNav />
+      </motion.header>
 
       {error && <div className="dash-error">⚠️ {error}</div>}
       {!stats && !error && <div className="dash-loading">Chargement des données…</div>}
@@ -60,46 +80,47 @@ export default function Dashboard() {
       {stats && (
         <>
           <section className="kpi-grid">
-            <KpiCard label="Employés" value={fmt(stats.kpis.employees)} accent />
-            <KpiCard label="En poste" value={fmt(stats.kpis.active)} sub={`${fmt(stats.kpis.departed)} sortis`} />
-            <KpiCard label="Âge moyen" value={`${stats.kpis.avgAge} ans`} />
-            <KpiCard label="Jours d'absence" value={fmt(stats.kpis.absenceDays)} sub={`${fmt(stats.kpis.absenceRecords)} enregistrements`} />
-            <KpiCard label="Taux d'absentéisme" value={`${stats.kpis.absenteeismRate}%`} sub={`${fmt(stats.kpis.employeesWithAbsence)} employés concernés`} />
+            <KpiCard label="Employés" value={stats.kpis.employees} accent index={0} />
+            <KpiCard label="En poste" value={stats.kpis.active} sub={`${fmt(stats.kpis.departed)} sortis`} index={1} />
+            <KpiCard label="Âge moyen" value={stats.kpis.avgAge} decimals={1} suffix=" ans" index={2} />
+            <KpiCard label="Jours d'absence" value={stats.kpis.absenceDays} decimals={1} sub={`${fmt(stats.kpis.absenceRecords)} enregistrements`} index={3} />
+            <KpiCard label="Taux d'absentéisme" value={stats.kpis.absenteeismRate} decimals={1} suffix="%" sub={`${fmt(stats.kpis.employeesWithAbsence)} employés concernés`} index={4} />
           </section>
 
           <section className="charts">
-            <div className="card span-2">
+            <Card className="span-2" i={0}>
               <h2>Effectif par département</h2>
               <BarChart data={stats.byDepartment} unit="emp." />
-            </div>
+            </Card>
 
-            <div className="card">
+            <Card i={1}>
               <h2>Répartition par sexe</h2>
               <Donut data={stats.byGender} />
-            </div>
+            </Card>
 
-            <div className="card">
+            <Card i={2}>
               <h2>Par type de contrat</h2>
               <Donut data={stats.byContract} />
-            </div>
+            </Card>
 
-            <div className="card span-2">
+            <Card className="span-2" i={3}>
               <h2>Absences par motif</h2>
               <BarChart data={stats.byMotif} unit="abs." />
-            </div>
+            </Card>
 
-            <div className="card span-2">
+            <Card className="span-2" i={4}>
               <h2>Absences par année</h2>
               <BarChart data={stats.byYear} unit="abs." />
-            </div>
+            </Card>
 
-            <div className="card">
+            <Card i={5}>
               <h2>Par qualification</h2>
               <Donut data={stats.byQualification} />
-            </div>
+            </Card>
 
-            <div className="card span-3">
+            <Card className="span-3" i={6}>
               <h2>Top 10 des plus absents</h2>
+              <div className="table-wrap">
               <table className="dash-table">
                 <thead>
                   <tr><th>Matricule</th><th>Fonction</th><th>Dépt.</th><th>Absences</th><th>Jours</th></tr>
@@ -116,10 +137,13 @@ export default function Dashboard() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </Card>
           </section>
         </>
       )}
+
+      <ChatWidget />
     </div>
   );
 }
