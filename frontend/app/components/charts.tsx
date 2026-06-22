@@ -104,6 +104,157 @@ export function BarChart({ data, unit }: { data: Slice[]; unit?: string }) {
   );
 }
 
+// --- Prévision (courbe historique + projection + intervalle de confiance) ------
+export interface ForecastPoint {
+  period: string;
+  value: number;
+  forecast: boolean;
+  lower?: number;
+  upper?: number;
+}
+export interface ForecastSeries {
+  unit: string;
+  points: ForecastPoint[];
+  lastActual: number;
+  nextValue: number;
+  changePct: number;
+  trend: 'up' | 'down' | 'flat';
+  horizon: number;
+}
+
+const fmtPeriod = (p: string) => (p.length === 7 ? `${p.slice(5)}/${p.slice(2, 4)}` : p);
+
+export function ForecastChart({ series, color = '#6366f1' }: { series: ForecastSeries; color?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+
+  const pts = series.points;
+  const W = 360;
+  const H = 180;
+  const padL = 34;
+  const padR = 14;
+  const padT = 16;
+  const padB = 28;
+  const iw = W - padL - padR;
+  const ih = H - padT - padB;
+
+  const vals = pts.flatMap((p) => [p.value, p.lower ?? p.value, p.upper ?? p.value]);
+  let min = Math.min(...vals);
+  let max = Math.max(...vals);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  const pad = (max - min) * 0.12;
+  min = Math.max(0, min - pad);
+  max += pad;
+
+  const n = pts.length;
+  const x = (i: number) => padL + (n === 1 ? iw / 2 : (i * iw) / (n - 1));
+  const y = (v: number) => padT + ih - ((v - min) / (max - min)) * ih;
+
+  const firstFc = pts.findIndex((p) => p.forecast);
+  const lastActualIdx = firstFc === -1 ? n - 1 : firstFc - 1;
+
+  const actualPath = pts
+    .slice(0, lastActualIdx + 1)
+    .map((p, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(p.value)}`)
+    .join(' ');
+
+  const fcAnchor = firstFc === -1 ? [] : [pts[lastActualIdx], ...pts.slice(firstFc)];
+  const fcPath = fcAnchor
+    .map((p, k) => `${k ? 'L' : 'M'} ${x(lastActualIdx + k)} ${y(p.value)}`)
+    .join(' ');
+
+  const bandUpper = fcAnchor.map((p, k) => `${x(lastActualIdx + k)} ${y(p.upper ?? p.value)}`);
+  const bandLower = fcAnchor.map((p, k) => `${x(lastActualIdx + k)} ${y(p.lower ?? p.value)}`).reverse();
+  const bandPath = fcAnchor.length ? `M ${[...bandUpper, ...bandLower].join(' L ')} Z` : '';
+  const boundaryX = firstFc === -1 ? null : (x(lastActualIdx) + x(firstFc)) / 2;
+
+  const tickIdx = [...new Set([0, lastActualIdx, n - 1])];
+
+  return (
+    <motion.div
+      ref={ref}
+      className="forecast-wrap"
+      initial={{ opacity: 0, y: 12 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+    >
+      <svg viewBox={`0 0 ${W} ${H}`} className="forecast-svg" preserveAspectRatio="none">
+        {/* Grille : min / max */}
+        {[max, (max + min) / 2, min].map((v, i) => (
+          <g key={i}>
+            <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} className="fc-grid" />
+            <text x={padL - 6} y={y(v) + 3} className="fc-ytick">
+              {Math.round(v)}
+            </text>
+          </g>
+        ))}
+
+        {/* Intervalle de confiance */}
+        {bandPath && <path d={bandPath} fill={color} className="fc-band" />}
+
+        {/* Séparateur historique / prévision */}
+        {boundaryX !== null && (
+          <line x1={boundaryX} x2={boundaryX} y1={padT} y2={padT + ih} className="fc-divider" />
+        )}
+
+        {/* Courbe historique */}
+        <motion.path
+          d={actualPath}
+          fill="none"
+          stroke={color}
+          strokeWidth={2.4}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={inView ? { pathLength: 1 } : {}}
+          transition={{ duration: 0.9, ease: 'easeOut' }}
+        />
+        {/* Courbe prévisionnelle (pointillés) */}
+        {fcPath && (
+          <motion.path
+            d={fcPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={2.4}
+            strokeDasharray="5 4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={inView ? { pathLength: 1 } : {}}
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.6 }}
+          />
+        )}
+
+        {/* Points */}
+        {pts.map((p, i) => (
+          <motion.circle
+            key={p.period}
+            cx={x(i)}
+            cy={y(p.value)}
+            r={p.forecast ? 3 : 2.8}
+            fill={p.forecast ? 'var(--panel)' : color}
+            stroke={color}
+            strokeWidth={p.forecast ? 1.6 : 0}
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.3, delay: 0.4 + i * 0.03 }}
+          />
+        ))}
+
+        {/* Étiquettes axe X */}
+        {tickIdx.map((i) => (
+          <text key={i} x={x(i)} y={H - 8} className="fc-xtick" textAnchor="middle">
+            {fmtPeriod(pts[i].period)}
+          </text>
+        ))}
+      </svg>
+    </motion.div>
+  );
+}
+
 // --- Donut (camembert évidé, segments qui se dessinent au scroll) --------------
 const PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#a3a3a3'];
 

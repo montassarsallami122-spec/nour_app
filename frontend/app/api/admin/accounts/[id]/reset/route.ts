@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { backendFetch } from '../../lib/api';
+import { backendFetch } from '../../../../../lib/api';
 
-// Proxy vers le backend. Le backend déduit l'identité (admin vs employé) du jeton
-// de session et restreint automatiquement les données pour un employé.
-export async function POST(req: NextRequest) {
-  let body: { question?: string };
+// Réinitialisation du mot de passe d'un compte (admin uniquement).
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Corps JSON invalide.' }, { status: 400 });
   }
-
   try {
-    const r = await backendFetch('/api/chat', {
+    const r = await backendFetch(`/api/admin/accounts/${encodeURIComponent(id)}/reset`, {
       method: 'POST',
-      body: JSON.stringify({ question: body.question }),
+      body: JSON.stringify(body),
     });
     const data = await r.json();
     return NextResponse.json(data, { status: r.status });
