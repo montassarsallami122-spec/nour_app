@@ -4,10 +4,12 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useI18n, LangToggle } from '../lib/i18n';
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const { t } = useI18n();
   const from = params.get('from') || '/dashboard';
 
   const [username, setUsername] = useState('');
@@ -28,10 +30,11 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Échec de la connexion.');
+        setError(data.error || t('login.fail'));
         return;
       }
-      router.replace(from);
+      // Première connexion : changement de mot de passe obligatoire.
+      router.replace(data.mustReset ? '/change-password' : from);
       router.refresh();
     } catch (err) {
       setError((err as Error).message);
@@ -49,13 +52,14 @@ function LoginForm() {
     >
       <div className="auth-brand">
         <span className="auth-logo">📊</span>
-        <h1>Chatbot RH</h1>
-        <p>Connectez-vous pour accéder à votre tableau de bord et à l&apos;assistant.</p>
+        <h1>{t('login.title')}</h1>
+        <p>{t('login.sub')}</p>
+        <LangToggle className="auth-lang" />
       </div>
 
       <form className="auth-form" onSubmit={submit}>
         <label>
-          <span>Identifiant</span>
+          <span>{t('login.username')}</span>
           <input
             type="text"
             autoComplete="username"
@@ -67,7 +71,7 @@ function LoginForm() {
         </label>
 
         <label>
-          <span>Mot de passe</span>
+          <span>{t('login.password')}</span>
           <input
             type="password"
             autoComplete="current-password"
@@ -90,11 +94,11 @@ function LoginForm() {
         )}
 
         <button type="submit" className="auth-submit" disabled={loading || !username || !password}>
-          {loading ? <span className="spinner" /> : 'Se connecter'}
+          {loading ? <span className="spinner" /> : t('login.submit')}
         </button>
       </form>
 
-      <Link href="/" className="auth-back">← Retour à l&apos;accueil</Link>
+      <Link href="/" className="auth-back">{t('login.back')}</Link>
     </motion.div>
   );
 }

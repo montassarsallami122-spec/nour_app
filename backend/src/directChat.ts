@@ -15,8 +15,8 @@ export interface DirectResult {
 }
 
 type Row = Record<string, unknown>;
-const all = (sql: string, ...p: unknown[]): Row[] => db.prepare(sql).all(...p) as Row[];
-const one = (sql: string, ...p: unknown[]): Row => db.prepare(sql).get(...p) as Row;
+const all = (sql: string, ...p: (string | number | null)[]): Row[] => db.prepare(sql).all(...p) as Row[];
+const one = (sql: string, ...p: (string | number | null)[]): Row => db.prepare(sql).get(...p) as Row;
 const fmtCounts = (rows: Row[], k: string, v = 'c') =>
   rows.map((r) => `${r[k] ?? '(vide)'}: ${r[v]}`).join(', ');
 

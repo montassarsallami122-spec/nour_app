@@ -5,6 +5,13 @@
 import { db, SCHEMA_DESCRIPTION } from './db.js';
 import { llm, MODEL } from './llm.js';
 
+// Interface minimale d'une connexion SQLite (le vrai `db` ou une connexion
+// isolée par employé — voir scoped.ts). Permet d'exécuter le même pipeline
+// text-to-SQL sur des données restreintes sans dupliquer le code.
+export interface SqlRunner {
+  prepare(sql: string): { all(...p: unknown[]): unknown[] };
+}
+
 const MAX_ROWS = 200; // limite de lignes renvoyées au modèle (contrôle des tokens/coût)
 
 export interface ChatResult {
@@ -86,7 +93,9 @@ async function sqlResultToAnswer(question: string, sql: string, rows: unknown[])
 }
 
 // --- Orchestration --------------------------------------------------------------
-export async function answerQuestion(question: string): Promise<ChatResult> {
+// `runner` permet d'exécuter la requête contre une connexion restreinte (un seul
+// employé). Par défaut on utilise la base complète (mode admin).
+export async function answerQuestion(question: string, runner: SqlRunner = db): Promise<ChatResult> {
   let sql = assertReadOnly(await questionToSql(question));
   let rows: unknown[] | null = null;
   let lastError = '';
@@ -94,7 +103,7 @@ export async function answerQuestion(question: string): Promise<ChatResult> {
   // Tentative initiale + 1 auto-correction si la requête échoue à l'exécution.
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      rows = db.prepare(sql).all();
+      rows = runner.prepare(sql).all();
       break;
     } catch (e) {
       lastError = (e as Error).message;

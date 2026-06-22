@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useI18n } from '../lib/i18n';
 
 interface Message {
   role: 'user' | 'bot';
@@ -11,19 +12,14 @@ interface Message {
   sql?: string;
 }
 
-const SUGGESTIONS = [
-  "Combien d'employés au total ?",
-  "Top 5 des plus absents",
-  "Femmes vs hommes",
-  "CDI dans le département AQ ?",
-];
-
 // Widget de chat flottant : une bulle en bas à droite qui ouvre un panneau
 // de discussion. Réutilise l'endpoint /api/chat (clé d'API côté serveur).
 export function ChatWidget() {
+  const { t } = useI18n();
+  const SUGGESTIONS = [t('chat.s.admin.1'), t('chat.s.admin.2'), t('chat.s.admin.4'), t('chat.s.admin.5')];
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', content: "Bonjour 👋 Posez-moi une question sur vos employés et leurs absences." },
+    { role: 'bot', content: t('chat.greeting') },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,7 +43,7 @@ export function ChatWidget() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMessages((m) => [...m, { role: 'bot', content: `⚠️ ${data.error || 'Erreur'}` }]);
+        setMessages((m) => [...m, { role: 'bot', content: `⚠️ ${data.error || t('chat.error')}` }]);
       } else {
         setMessages((m) => [...m, { role: 'bot', content: data.answer, sql: data.sql }]);
       }
@@ -74,7 +70,7 @@ export function ChatWidget() {
                 <span className="cw-avatar">💬</span>
                 <div>
                   <strong>Assistant RH</strong>
-                  <small>en ligne · propulsé par GPT-4o</small>
+                  <small>{t('chat.sub.staff')}</small>
                 </div>
               </div>
               <button className="cw-close" onClick={() => setOpen(false)} aria-label="Fermer">✕</button>
@@ -97,7 +93,7 @@ export function ChatWidget() {
                     )}
                     {m.sql && (
                       <details className="sql">
-                        <summary>Voir la requête SQL</summary>
+                        <summary>{t('chat.sql')}</summary>
                         {m.sql}
                       </details>
                     )}
@@ -123,7 +119,7 @@ export function ChatWidget() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Écrivez votre message…"
+                placeholder={t('chat.placeholder')}
                 disabled={loading}
               />
               <button type="submit" disabled={loading || !input.trim()} aria-label="Envoyer">➤</button>

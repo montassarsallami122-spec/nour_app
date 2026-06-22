@@ -1,5 +1,4 @@
 // Wrapper autour du module SQLite intégré à Node 24 (aucune compilation native requise).
-// @ts-expect-error - node:sqlite n'a pas encore de types publiés dans @types/node
 import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.js';
 

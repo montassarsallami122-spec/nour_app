@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { backendFetch } from '../../lib/api';
 
-// Proxy vers le backend : renvoie les agrégats globaux (admin) ou la vue
-// personnelle de l'employé selon le jeton de session.
+// Coordonnées publiques de l'équipe RH (affichées sur la page Contact).
 export async function GET() {
   try {
-    const r = await backendFetch('/api/stats');
+    const r = await backendFetch('/api/contacts');
     const data = await r.json();
     return NextResponse.json(data, { status: r.status });
   } catch (e) {

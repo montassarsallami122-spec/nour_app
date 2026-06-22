@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { backendFetch } from '../../lib/api';
+import { backendFetch } from '../../../lib/api';
 
-// Proxy vers le backend : renvoie les agrégats globaux (admin) ou la vue
-// personnelle de l'employé selon le jeton de session.
+// Boîte de réception des messages de contact (admin + rh — contrôlé côté backend).
 export async function GET() {
   try {
-    const r = await backendFetch('/api/stats');
+    const r = await backendFetch('/api/admin/messages');
     const data = await r.json();
     return NextResponse.json(data, { status: r.status });
   } catch (e) {

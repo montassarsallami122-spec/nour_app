@@ -11,6 +11,10 @@ export const config = {
   llmBaseUrl: process.env.LLM_BASE_URL || 'https://models.inference.ai.azure.com',
   llmModel: process.env.LLM_MODEL || 'gpt-4o',
   appApiKey: required('APP_API_KEY'),
+  authSecret: process.env.AUTH_SECRET || 'dev-secret-change-me',
+  // Compte admin initial créé au démarrage s'il n'existe aucun admin.
+  seedAdminUser: process.env.SEED_ADMIN_USER || 'admin',
+  seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || 'admin123',
   chatMode: (process.env.CHAT_MODE || 'direct') as 'direct' | 'sql',
   port: Number(process.env.PORT || 3001),
   dbPath: process.env.DB_PATH || './data/app.db',

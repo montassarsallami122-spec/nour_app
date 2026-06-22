@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppNav } from '../components/AppNav';
+import { useI18n } from '../lib/i18n';
 
 interface Message {
   role: 'user' | 'bot';
@@ -12,25 +13,32 @@ interface Message {
   sql?: string;
 }
 
-const SUGGESTIONS = [
-  "Combien d'employés au total ?",
-  "Top 5 des employés les plus absents",
-  "Répartition des absences par motif",
-  "Nombre de femmes vs hommes",
-  "Combien de CDI dans le département AQ ?",
-];
-
 export default function Chatbot() {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', content: "Bonjour 👋 Posez-moi une question sur vos employés et leurs absences." },
+    { role: 'bot', content: t('chat.greeting') },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setRole(d.role))
+      .catch(() => {});
+  }, []);
+
+  // L'employé voit les suggestions personnelles ; admin & rh les suggestions globales.
+  const suggestions =
+    role === 'employee'
+      ? [t('chat.s.emp.1'), t('chat.s.emp.2'), t('chat.s.emp.3'), t('chat.s.emp.4'), t('chat.s.emp.5')]
+      : [t('chat.s.admin.1'), t('chat.s.admin.2'), t('chat.s.admin.3'), t('chat.s.admin.4'), t('chat.s.admin.5')];
 
   async function send(question: string) {
     const q = question.trim();
@@ -46,7 +54,7 @@ export default function Chatbot() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMessages((m) => [...m, { role: 'bot', content: `⚠️ ${data.error || 'Erreur'}` }]);
+        setMessages((m) => [...m, { role: 'bot', content: `⚠️ ${data.error || t('chat.error')}` }]);
       } else {
         setMessages((m) => [...m, { role: 'bot', content: data.answer, sql: data.sql }]);
       }
@@ -62,8 +70,8 @@ export default function Chatbot() {
       <header className="header">
         <div className="header-row">
           <div>
-            <h1>Chatbot RH — Mes données</h1>
-            <p>Employés &amp; absences · propulsé par GPT-4o</p>
+            <h1>{t('chat.title')}</h1>
+            <p>{role === 'employee' ? t('chat.sub.emp') : t('chat.sub.staff')}</p>
           </div>
           <AppNav />
         </div>
@@ -88,7 +96,7 @@ export default function Chatbot() {
               )}
               {m.sql && (
                 <details className="sql">
-                  <summary>Voir la requête SQL</summary>
+                  <summary>{t('chat.sql')}</summary>
                   {m.sql}
                 </details>
               )}
@@ -113,7 +121,7 @@ export default function Chatbot() {
             exit={{ opacity: 0, y: -6 }}
             transition={{ staggerChildren: 0.08 }}
           >
-            {SUGGESTIONS.map((s, i) => (
+            {suggestions.map((s, i) => (
               <motion.button
                 key={s}
                 className="chip"
@@ -138,10 +146,10 @@ export default function Chatbot() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Posez votre question…"
+          placeholder={t('chat.placeholder')}
           disabled={loading}
         />
-        <button type="submit" disabled={loading || !input.trim()}>Envoyer</button>
+        <button type="submit" disabled={loading || !input.trim()}>{t('chat.send')}</button>
       </form>
     </div>
   );
